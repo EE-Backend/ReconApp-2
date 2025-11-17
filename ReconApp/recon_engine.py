@@ -658,8 +658,7 @@ def generate_reconciliation_file(trial_balance_file, entries_file, icp_code):
         mapping_dir_df,
         icp_code,
         build_fn=build_recon_workbook,
-        plc_filename="PLC.xlsx",
-        output_path=output_path
+        plc_filename="PLC.xlsx"
     )
 
     # 4. Return file bytes to Streamlit
