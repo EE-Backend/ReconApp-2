@@ -25,8 +25,8 @@ st.write("Upload the Trial Balance and Entries, input ICP Code, and generate the
 # ------------------------------------------------------
 # REQUIRED INTERNAL FILES (NOT uploaded by user)
 # ------------------------------------------------------
-MAPPING_FILE = Path("mapping.xlsx")
-PLC_FILE = Path("PLC.xlsx")
+MAPPING_FILE = Path("static/mapping.xlsx")
+PLC_FILE = Path("static/PLC.xlsx")
 
 if not MAPPING_FILE.exists():
     st.error("❌ mapping.xlsx not found in the app folder. Please upload it once at deployment.")
