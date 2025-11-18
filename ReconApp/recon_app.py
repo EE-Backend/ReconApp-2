@@ -24,37 +24,32 @@ logo_path = STATIC_DIR / "logo.png"   # your actual logo
 
 
 # -------------------------------------------------------
-# HEADER — Logo + Title (very tight spacing)
+# HEADER — Perfect alignment + ~0.5 cm spacing
 # -------------------------------------------------------
-col1, col2 = st.columns([1, 6])
 
-with col1:
-    if logo_path.exists():
-        st.image(str(logo_path), width=110)
-    else:
-        st.warning(f"⚠ Logo not found at: {logo_path}")
-
-with col2:
-    st.markdown(
-        """
-        <div style="
-            display:flex;
-            align-items:center;
-            height:110px;
-            margin-left:-80px;    /* ← reduce space between logo + title */
+st.markdown(
+    f"""
+    <div style="
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:15px;                 /* ← 0.5 cm spacing */
+        margin-top:20px;
+        margin-bottom:40px;       /* space BEFORE Step 1 */
+    ">
+        <img src="static/logo.png" style="width:120px; border-radius:5px;">
+        <h1 style="
+            font-size:42px;
+            margin:0;
+            padding:0;
+            line-height:1;
         ">
-            <h1 style="
-                margin:0;
-                padding:0;
-                font-size:42px;
-            ">
-                Recon File Generator
-            </h1>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
+            Recon File Generator
+        </h1>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # -------------------------------------------------------
@@ -118,6 +113,7 @@ if generate_button:
 # -------------------------------------------------------
 st.write("---")
 st.caption("EE Internal Tool — Powered by Streamlit")
+
 
 
 
