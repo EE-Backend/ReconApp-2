@@ -393,7 +393,6 @@ def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_
                 continue
 
             # Normal accounts: show full list newest -> oldest
-            acc_df = acc_df.sort_values("Posting Date", descending=False).sort_values("Posting Date", ascending=False)
             acc_df = acc_df.sort_values("Posting Date", ascending=False)
             net_sum = round(acc_df["Amount (LCY)"].sum(), 2)
 
