@@ -291,7 +291,7 @@ def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_
 
                 # Totals row (Account Total above the number OR as requested)
                 ws.cell(row=row_cursor, column=4, value="Account Total").font = Font(bold=True)
-                vcell = ws.cell(row=row_cursor, column=5, value=net_sum)
+                vcell = ws.cell(row=row_cursor, column=6, value=net_sum)
                 vcell.font = Font(bold=True)
                 for c in range(1, 6):
                     ws.cell(row=row_cursor, column=c).fill = total_fill
