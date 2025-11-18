@@ -2,36 +2,54 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 from pathlib import Path
-from recon_engine import generate_reconciliation_file  # backend engine
+import os
 
-# ============================================================
-# FIXED LOGO HANDLING — works on Streamlit Cloud
-# ============================================================
+# ======================================================================================
+# DEBUG SECTION – THIS WILL SHOW US WHERE STREAMLIT IS LOOKING FOR FILES
+# ======================================================================================
 
-# BASE_DIR = /mount/src/reconapp/ReconApp
 BASE_DIR = Path(__file__).resolve().parent
-logo_path = BASE_DIR / "static" / "company_logo.png"
+STATIC_DIR = BASE_DIR / "static"
 
-# Display logo at top
+st.write("### Debug Info")
+st.write("Current working directory:", os.getcwd())
+st.write("Location of recon_app.py:", BASE_DIR)
+st.write("Contents of BASE_DIR:", os.listdir(BASE_DIR))
+
+if STATIC_DIR.exists():
+    st.write("static/ exists:", True)
+    st.write("static contains:", os.listdir(STATIC_DIR))
+else:
+    st.write("static/ exists:", False)
+
+# ======================================================================================
+# IMPORT THE ENGINE
+# ======================================================================================
+from recon_engine import generate_reconciliation_file
+
+
+# ======================================================================================
+# APP HEADER + LOGO
+# ======================================================================================
+
+st.set_page_config(page_title="Recon File Generator", layout="wide")
+
+# Attempt to load logo
+logo_path = STATIC_DIR / "company_logo.png"
+
 if logo_path.exists():
     st.image(str(logo_path), width=200)
 else:
-    st.warning(f"⚠ Logo not found at: {logo_path}")
+    st.error(f"⚠ Logo not found at: {logo_path}")
 
-# ============================================================
-# STREAMLIT PAGE CONFIG
-# ============================================================
-st.set_page_config(
-    page_title="Recon File Generator",
-    layout="wide"
-)
 
 st.title("📊 EE Recon File Generator")
 st.write("Upload the required files below and generate a standardized reconciliation workbook.")
 
-# ============================================================
-# USER UPLOADS
-# ============================================================
+
+# ======================================================================================
+# USER INPUT SECTION
+# ======================================================================================
 
 st.header("Step 1 — Upload Inputs")
 
@@ -52,14 +70,11 @@ entries_file = st.file_uploader(
 # ICP Code
 icp_code = st.text_input("Enter ICP Code", placeholder="Example: SKPVAB")
 
+
 st.write("---")
 st.header("Step 2 — Generate Recon File")
 
 generate_button = st.button("Generate Recon File", type="primary")
-
-# ============================================================
-# RUN GENERATOR
-# ============================================================
 
 if generate_button:
 
@@ -69,6 +84,7 @@ if generate_button:
 
     with st.spinner("⏳ Generating reconciliation file..."):
 
+        # Call your engine logic
         output_bytes = generate_reconciliation_file(
             trial_balance_file,
             entries_file,
