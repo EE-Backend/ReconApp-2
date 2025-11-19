@@ -35,6 +35,11 @@ def to_float(val):
     except:
         return 0.0
 
+def hyperlink_to_frontpage(cell):
+    """Convert a cell into a hyperlink pointing back to the frontpage."""
+    cell.hyperlink = "#Frontpage!A1"
+    cell.style = "Hyperlink"
+
 
 def _normalize_code(x):
     """Return consistent code strings (e.g., 101, 101.0, ' 101 ') -> '101'."""
