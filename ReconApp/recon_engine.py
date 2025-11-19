@@ -353,7 +353,40 @@ def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_
                 row_cursor += 3
                 continue
 
+            # Special: accounts 311000 and 721000 → show ONLY one total line (no ICP grouping)
+            if acc_no in ["311000", "721000"]:
+                net_sum = round(acc_df["Amount (LCY)"].sum(), 2)
+            
+                header_cell = ws.cell(row=row_cursor, column=1, value=f"{acc_no} - {acc_name}")
+                account_anchor[acc_no] = (ws.title, row_cursor)
+                header_cell.fill = green_fill if abs(net_sum - tb_bal) <= tolerance else red_fill
+                if abs(net_sum - tb_bal) > tolerance:
+                    sheet_mismatch = True
+                    mismatch_accounts.append({
+                        "No": acc_no,
+                        "Name": acc_name,
+                        "tb_balance": tb_bal,
+                        "entries_sum": net_sum,
+                        "difference": round(net_sum - tb_bal, 2),
+                    })
+            
+                row_cursor += 1
+                block_start = row_cursor
+            
+                # Header row: just "Account Total"
+                ws.cell(row=row_cursor, column=1, value="Account Total").font = Font(bold=True)
+                vcell = ws.cell(row=row_cursor, column=2, value=net_sum)
+                vcell.font = Font(bold=True)
+            
+                # Fill colors
+                ws.cell(row=row_cursor, column=1).fill = total_fill
+                ws.cell(row=row_cursor, column=2).fill = total_fill
+            
+                apply_borders(ws, block_start, row_cursor, 1, 2)
+                row_cursor += 3
+                continue
 
+            
 
             # Special: bank/cash accounts 390000–399999 -> totals only with note (See documentation)
             if acc_no.isdigit() and 390000 <= int(acc_no) <= 399999:
