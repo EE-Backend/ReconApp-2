@@ -8,7 +8,6 @@ from recon_engine import generate_reconciliation_file
 # ============================================
 st.set_page_config(page_title="Recon File Generator", layout="wide")
 
-# Base directory of this file
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 LOGO_PATH = STATIC_DIR / "logo.png"
@@ -34,7 +33,7 @@ with col_title:
         unsafe_allow_html=True
     )
 
-st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)  # small spacing
+st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
 
 # ============================================
 # STEP 1 — INPUTS
@@ -55,6 +54,9 @@ entries_file = st.file_uploader(
 
 icp_code = st.text_input("Enter ICP Code", placeholder="Example: SKPVAB").strip()
 
+# 🔹 NEW: Quarter input
+quarter = st.text_input("Quarter", placeholder="Example: Q4 2025").strip()
+
 st.markdown("<div style='height:30px;'></div>", unsafe_allow_html=True)
 
 # ============================================
@@ -73,7 +75,8 @@ if st.button("Generate Recon File", type="primary"):
             output_bytes = generate_reconciliation_file(
                 trial_balance_file,
                 entries_file,
-                icp_code.upper()
+                icp_code.upper(),
+                quarter=quarter or None,   # pass quarter to engine
             )
         except Exception as e:
             st.error(f"❌ An error occurred:\n\n{e}")
