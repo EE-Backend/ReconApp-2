@@ -165,6 +165,201 @@ def apply_borders(ws, top, bottom, left, right):
     ws.cell(bottom, left).border = Border(bottom=thick, left=thick, right=thin, top=thin)
     ws.cell(bottom, right).border = Border(bottom=thick, right=thick, left=thin, top=thin)
 
+####### NEW CODE FRESHLY BAKED 
+
+def add_pl_balance_sheet(wb, trial_balance_df, code_to_meta):
+    """
+    Builds the PL & Balance sheet based on mapping codes already used
+    elsewhere in the reconciliation. Uses existing color fills:
+        - header_fill
+        - entry_fill
+        - total_fill
+        - green_fill / red_fill for control line
+    """
+    ws = wb.create_sheet("PL & Balance", 1)  # After Trial Balance
+
+    # === Group mapping layouts (your screenshots) ===
+    PL_LAYOUT = [
+        ("",  "Revenue", None),
+        ("101", "Revenue", "Income"),
+        ("102", "Results from subsidiaries", "Investments"),
+        ("103", "Results from associated companies", "Investments"),
+        ("104", "Other Income", "Income"),
+        ("105", "Direct Costs", "Costs"),
+        ("", "Gross Profit", None),
+
+        ("106", "Staff costs", "Costs"),
+        ("107", "Other external costs", "Costs"),
+        ("", "EBITDA", None),
+
+        ("108", "Depreciation & impairment", "PPE"),
+        ("", "Operating Profit", None),
+
+        ("109", "Finance income", "Finance Income & Expenses"),
+        ("110", "Finance expenses", "Finance Income & Expenses"),
+        ("", "Profit before tax", None),
+
+        ("111", "Tax", "Corp. & Deferred Tax"),
+        ("", "Total profit", None),
+    ]
+
+    ASSETS_LAYOUT = [
+        ("", "Non-current assets", None),
+        ("1", "Goodwill", "Goodwill"),
+        ("2", "Property, plant and equipment", "PPE"),
+        ("3", "Lease assets", "Lease Assets"),
+        ("4", "Investments in subsidiaries", "Investments"),
+        ("5", "Investments in associated companies", "Investments"),
+        ("6", "Other investments", "Investments"),
+        ("8", "Intercompany receivables", "Intercompany"),
+        ("9", "Long term trade receivables and contract assets", "Trade Receivables"),
+        ("10", "Derivatives, long term", "Derivatives"),
+        ("11", "Other long term receivables", "Other Receivables"),
+        ("12", "Deferred tax assets", "Corp. & Deferred Tax"),
+        ("", "Total non-current assets", None),
+
+        ("", "Current assets", None),
+        ("13", "Inventories (development costs and projects)", "Inventories"),
+        ("14", "Derivatives, short term", "Derivatives"),
+        ("15", "Trade receivables and contract assets", "Trade Receivables"),
+        ("16", "Other receivables", "Other Receivables"),
+        ("17", "Prepayments", "Prepayments"),
+        ("19", "Cash and cash equivalents", "Cash & Cash Equivalents"),
+        ("", "Total current assets", None),
+
+        ("", "Total assets", None),
+    ]
+
+    EQUITY_LIAB_LAYOUT = [
+        ("", "Equity", None),
+        ("20", "Share capital", "Equity"),
+        ("21", "Retained earnings and reserves", "Equity"),
+        ("22", "Hybrid Capital", "Equity"),
+        ("23", "Minority interests", "Equity"),
+        ("", "Total Profit", None),
+        ("", "Total equity", None),
+
+        ("", "Liabilities", None),
+        ("24", "Bonds", "Bonds"),
+        ("25", "Long-term Project Financing", "Mortage Credit"),
+        ("28", "Provisions", "Provisions"),
+        ("29", "Derivatives, long term", "Derivatives"),
+        ("30", "Deferred tax", "Corp. & Deferred Tax"),
+        ("", "Total non-current liabilities", None),
+
+        ("31", "Project Financing", "Mortage Credit"),
+        ("33", "Trade Payables", "Trade Payables"),
+        ("34", "Derivatives, short term", "Derivatives"),
+        ("35", "Intercompany payables", "Intercompany"),
+        ("36", "Corporation tax", "Corp. & Deferred Tax"),
+        ("37", "Provisions", "Provisions"),
+        ("38", "Deferred income", "Deferred Income"),
+        ("39", "Other payables", "Accruals & Other Payables"),
+        ("", "Total current liabilities", None),
+
+        ("", "Total Liabilities", None),
+
+        ("", "Assets = Liabilities Control", None),
+    ]
+
+    # === Compute mapping totals ===
+    totals = trial_balance_df.groupby("code")["Balance at Date"].sum().to_dict()
+
+    def get_val(code):
+        if not code or pd.isna(code):
+            return 0.0
+        return totals.get(str(code), 0.0)
+
+    # === Writer helper ===
+    def write_block(start_row, layout, compute_totals=True):
+        row = start_row
+        block_top = row
+
+        block_values = []
+
+        for code, desc, tab in layout:
+            # Column B – Group mapping code
+            ws.cell(row, 2, code if code else "")
+
+            # Column C – Description
+            c = ws.cell(row, 3, desc)
+            c.font = Font(bold=(code == ""))
+
+            # Choose fill based on row type
+            fill = header_fill if code == "" else entry_fill
+            c.fill = fill
+
+            # Column D – Value
+            v = get_val(code) if code else None
+            block_values.append(v or 0)
+
+            val_cell = ws.cell(row, 4)
+
+            # Totals (section totals) use total_fill
+            if code == "":
+                val_cell.fill = header_fill if "Total " not in desc else total_fill
+            else:
+                val_cell.fill = entry_fill
+
+            if code:  # numeric rows
+                val_cell.value = v
+                val_cell.number_format = "#,##0.00"
+            else:
+                val_cell.value = ""
+
+            # Column E – Tab hyperlink
+            tab_cell = ws.cell(row, 5)
+            tab_cell.fill = fill
+            if tab:
+                safe_tab = f"'{tab}'" if not tab.isalnum() else tab
+                tab_cell.value = tab
+                tab_cell.hyperlink = f"#{safe_tab}!A1"
+                tab_cell.style = "Hyperlink"
+
+            row += 1
+
+        apply_borders(ws, block_top, row - 1, 2, 5)
+        return row + 1
+
+    # === Write all blocks ===
+    r = 2
+    r = write_block(r, PL_LAYOUT)
+    r = write_block(r, ASSETS_LAYOUT)
+    r = write_block(r, EQUITY_LIAB_LAYOUT)
+
+    # === Assets = Liabilities control row (last row in EQUITY_LIAB) ===
+    # Find last row with description
+    last_row = r - 2
+    desc = ws.cell(last_row, 3).value
+    if "Assets = Liabilities Control" in desc:
+        assets_total = None
+        liabilities_total = None
+
+        # Locate totals in column D
+        for row_i in range(2, last_row):
+            text = str(ws.cell(row_i, 3).value)
+            if text == "Total assets":
+                assets_total = ws.cell(row_i, 4).value
+            if text == "Total Liabilities":
+                liabilities_total = ws.cell(row_i, 4).value
+
+        ctrl_val = (assets_total or 0) - (liabilities_total or 0)
+        ctrl_cell = ws.cell(last_row, 4, ctrl_val)
+        ctrl_cell.number_format = "#,##0.00"
+
+        # Color according to match
+        ctrl_cell.fill = green_fill if abs(ctrl_val) < 0.01 else red_fill
+
+    # === Hide mapping column B ===
+    ws.column_dimensions["B"].hidden = True
+
+    # Autofit columns B–E
+    for col in ws.columns:
+        max_len = max((len(str(c.value)) if c.value else 0) for c in col)
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col[0].column)].width = max_len + 2
+
+####### - 
+
 
 # === INTERNAL ZEROING ===
 def remove_internal_zeroes(df, tol=TOLERANCE):
@@ -257,6 +452,9 @@ def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_
     for col in ws_tb.columns:
         max_len = max((len(str(c.value)) if c.value else 0 for c in col), default=0)
         ws_tb.column_dimensions[openpyxl.utils.get_column_letter(col[0].column)].width = max_len + 2
+
+    add_pl_balance_sheet(wb, trial_balance_df, code_to_meta)
+
 
     # === ACCOUNT OVERVIEW (mapped groups) ===
     sheet_order = list(map_dir["sheet"].unique()) + ["Unmapped"]
