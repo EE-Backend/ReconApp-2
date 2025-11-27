@@ -500,21 +500,17 @@ def add_pl_balance_sheet(wb, trial_balance_df, code_to_meta):
     total_cl_val = sum_codes([str(c) for c in [31, 33, 34, 35, 36, 37, 38, 39]])
     total_liab_val = total_equity_val + total_ncl_val + total_cl_val
 
-    # === Correct colour for Assets = Liabilities Control ===
+    # === Correct colouring for Assets = Liabilities Control (based on Excel result) ===
     
-    # Read the value produced by Excel formula, not the Python calculation
-    ctrl_formula_value = ws.cell(r_ctrl, 4).value
+    ctrl_formula_value = ws.cell(r_ctrl, 4).value  # read Excel's formula result
     
-    # Try converting to number
     try:
         ctrl_formula_value = float(ctrl_formula_value)
     except:
-        ctrl_formula_value = 999999  # force red if unreadable
+        ctrl_formula_value = 999999  # force red if Excel gives a string or None
     
-    # Apply correct fill
     ctrl_fill = green_fill if abs(ctrl_formula_value) < 0.01 else red_fill
     
-    # Colour all 3 cells (description, value, tab)
     for col in range(3, 6):
         ws.cell(r_ctrl, col).fill = ctrl_fill
 
