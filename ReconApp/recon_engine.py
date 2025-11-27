@@ -301,45 +301,51 @@ def add_pl_balance_sheet(wb, trial_balance_df, code_to_meta):
             # Column C: description
             desc_cell = ws.cell(row, 3, desc)
     
-            # Column D: value (empty initially)
+            # Column D: value (placeholder)
             val_cell = ws.cell(row, 4)
     
-            # === SPECIAL CASE: Total profit inside Equity section ===
+            # === ⭐ SPECIAL CASE: Total profit inside Equity section ⭐ ===
             if code == "TP_EQUITY":
-                # Bold text, entry-fill
+                # Description formatting
                 desc_cell.font = Font(bold=True)
                 desc_cell.fill = entry_fill
     
-                # Reference the main Total profit row in P&L
-                tp_main_row = desc_row["Total profit"]
-                val_cell = ws.cell(row, 4, f"=D{tp_main_row}")
+                # Value = reference main P&L total profit
+                tp_main_row = desc_row["Total profit"]  # P&L total profit row
+                val_cell.value = f"=D{tp_main_row}"
+                val_cell.number_format = "#,##0.00"
                 val_cell.font = Font(bold=True)
                 val_cell.fill = entry_fill
-                val_cell.number_format = "#,##0.00"
     
                 # No code / no hyperlink
                 ws.cell(row, 2, "")
                 tab_cell = ws.cell(row, 5, "")
                 tab_cell.fill = entry_fill
     
-                # Track row for formulas
+                # Track row
                 desc_row[desc] = row
     
                 row += 1
                 continue
-
-            # === STANDARD MAPPING / HEADER / TOTAL HANDLING BELOW ===
-            
+            # === END SPECIAL CASE ===
+    
+            # === STANDARD LINE HANDLING ===
+    
+            # Determine row fill
             if code:
                 row_fill = entry_fill
             else:
-                if "Total" in desc or desc in ("Gross Profit", "EBITDA", "Operating Profit", "Profit before tax"):
+                if "Total" in desc or desc in (
+                    "Gross Profit", "EBITDA", "Operating Profit", "Profit before tax"
+                ):
                     row_fill = total_fill
                 else:
                     row_fill = header_fill
-
     
-            # Column E: Tab
+            desc_cell.fill = row_fill
+            val_cell.fill = row_fill
+    
+            # Column E: Tab cell
             tab_cell = ws.cell(row, 5)
             tab_cell.fill = row_fill
     
@@ -350,27 +356,29 @@ def add_pl_balance_sheet(wb, trial_balance_df, code_to_meta):
     
                 if tab:
                     tab_cell.value = tab
-                    if abs(v) > 0.00001:  # hyperlink only if non-zero
+                    if abs(v) > 0.00001:
                         safe_tab = f"'{tab}'" if not tab.isalnum() else tab
                         tab_cell.hyperlink = f"#{safe_tab}!A1"
                         tab_cell.font = Font(color="0000FF", underline="single")
             else:
                 tab_cell.value = ""
     
-            # Bold formatting for totals and headers
-            if code == "" or "Total" in desc or desc in ("Gross Profit", "EBITDA", "Operating Profit", "Profit before tax"):
+            # Bold formatting for headers/totals
+            if code == "" or "Total" in desc or desc in (
+                "Gross Profit", "EBITDA", "Operating Profit", "Profit before tax"
+            ):
                 desc_cell.font = Font(bold=True)
     
-            # Track rows for formulas
+            # Track rows
             desc_row[desc] = row
             if code:
                 code_row[code] = row
     
             row += 1
     
-        # Borders around C–E
         apply_borders(ws, block_top, row - 1, 3, 5)
         return row + 1
+
 
 
     # === Write the three blocks ===
