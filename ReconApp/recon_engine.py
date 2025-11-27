@@ -314,7 +314,6 @@ def add_pl_balance_sheet(wb, trial_balance_df, code_to_meta):
                 tp_main_row = desc_row["Total profit"]  # P&L total profit row
                 val_cell.value = f"=D{tp_main_row}"
                 val_cell.number_format = "#,##0.00"
-                val_cell.font = Font(bold=True)
                 val_cell.fill = entry_fill
     
                 # No code / no hyperlink
@@ -479,7 +478,7 @@ def add_pl_balance_sheet(wb, trial_balance_df, code_to_meta):
 
     # === Assets = Liabilities Control ===
     r_ctrl = desc_row["Assets = Liabilities Control"]
-    set_formula("Assets = Liabilities Control", f"={d_ref(r_ta)}-{d_ref(r_tl)}")
+    set_formula("Assets = Liabilities Control", f"={d_ref(r_ta)}+{d_ref(r_tl)}")
 
     # Colour control row (green if ~0, red otherwise) using Python-calculated values
     # (same logic as the formulas, just evaluated once)
