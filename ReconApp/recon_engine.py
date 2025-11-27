@@ -460,7 +460,7 @@ def add_pl_balance_sheet(wb, trial_balance_df, code_to_meta):
     total_ca_val = sum_codes([str(c) for c in [13, 14, 15, 16, 17, 19]])
     total_assets_val = total_nca_val + total_ca_val
 
-    total_equity_val = sum_codes([str(c) for c in [20, 21, 22, 23]]) + total_profit_val
+    total_equity_val = sum_codes([str(c) for c in [20, 21, 22, 23]]) 
     total_ncl_val = sum_codes([str(c) for c in [24, 25, 28, 29, 30]])
     total_cl_val = sum_codes([str(c) for c in [31, 33, 34, 35, 36, 37, 38, 39]])
     total_liab_val = total_equity_val + total_ncl_val + total_cl_val
