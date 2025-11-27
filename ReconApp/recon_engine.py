@@ -327,33 +327,6 @@ def add_pl_balance_sheet(wb, trial_balance_df, code_to_meta):
     
                 row += 1
                 continue
-    
-            # === STANDARD BEHAVIOR FOR ALL OTHER LINES ===
-    
-            # Determine fill
-            # === SPECIAL CASE: Total profit inside Equity section ===
-            if code == "TP_EQUITY":
-                # Bold description using entry-fill
-                desc_cell.font = Font(bold=True)
-                desc_cell.fill = entry_fill
-            
-                # Use the P&L Total profit row as value
-                tp_main_row = desc_row["Total profit"]
-                val_cell = ws.cell(row, 4, f"=D{tp_main_row}")
-                val_cell.font = Font(bold=True)
-                val_cell.fill = entry_fill
-                val_cell.number_format = "#,##0.00"
-            
-                # No mapping or hyperlink
-                ws.cell(row, 2, "")
-                tab_cell = ws.cell(row, 5, "")
-                tab_cell.fill = entry_fill
-            
-                # Register row for formula use
-                desc_row[desc] = row
-            
-                row += 1
-                continue
 
             # === STANDARD MAPPING / HEADER / TOTAL HANDLING BELOW ===
             
