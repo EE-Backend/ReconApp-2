@@ -636,6 +636,7 @@ def remove_internal_zeroes(df, tol=TOLERANCE):
 
 
 # === WORKBOOK BUILDING ===
+# === WORKBOOK BUILDING ===
 def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_meta, ICP, tolerance=TOLERANCE):
     """
     Returns: openpyxl.Workbook object, sheet_status dict, account_anchor dict, mismatch_accounts list
@@ -656,8 +657,8 @@ def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_
         max_len = max((len(str(c.value)) if c.value else 0 for c in col), default=0)
         ws_tb.column_dimensions[openpyxl.utils.get_column_letter(col[0].column)].width = max_len + 2
 
+    # PL & Balance sheet
     add_pl_balance_sheet(wb, trial_balance_df, code_to_meta)
-
 
     # === ACCOUNT OVERVIEW (mapped groups) ===
     sheet_order = list(map_dir["sheet"].unique()) + ["Unmapped"]
@@ -666,7 +667,7 @@ def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_
 
     sheet_status = {}
     account_anchor = {}
-    mismatch_accounts = []  # NEW
+    mismatch_accounts = []
 
     # iterate mapping order
     for sheet_name in sheet_order:
@@ -705,68 +706,81 @@ def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_
 
             # remove internal zeroes (only when Document No., ICP and GAAP match)
             acc_df = remove_internal_zeroes(acc_df)
-
             if acc_df.empty:
                 continue
 
+            # === Special accounts using ICP totals logic ===
+            if acc_no in ICP_TOTAL_ACCOUNTS:
+                tmp = acc_df.copy()
 
-        # === Special accounts using ICP totals logic ===
-        if acc_no in ICP_TOTAL_ACCOUNTS:
-            grouped = acc_df.groupby("ICP CODE", as_index=False)["Amount (LCY)"].sum()
-            grouped["Description"] = grouped["ICP CODE"]
-            grouped["Document No."] = ""
-            grouped["GAAP Code"] = ""
-            acc_view = grouped[["Description", "Document No.", "ICP CODE", "GAAP Code", "Amount (LCY)"]].copy()
-            net_sum = round(acc_view["Amount (LCY)"].sum(), 2)
-        
-            # Header row
-            header_cell = ws.cell(row=row_cursor, column=1, value=f"{acc_no} - {acc_name}")
-            account_anchor[acc_no] = (ws.title, row_cursor)
-            hyperlink_to_frontpage(header_cell)
-            header_cell.fill = green_fill if abs(net_sum - tb_bal) <= tolerance else red_fill
-        
-            if abs(net_sum - tb_bal) > tolerance:
-                sheet_mismatch = True
-                mismatch_accounts.append({
-                    "No": acc_no,
-                    "Name": acc_name,
-                    "tb_balance": tb_bal,
-                    "entries_sum": net_sum,
-                    "difference": round(net_sum - tb_bal, 2),
-                })
-        
-            row_cursor += 1
-            block_start = row_cursor
-        
-            # Column headers
-            cols = ["Description", "Document No.", "ICP CODE", "GAAP Code", "Amount (LCY)"]
-            for c_idx, col in enumerate(cols, 1):
-                ws.cell(row=row_cursor, column=c_idx, value=col).font = Font(bold=True)
-                ws.cell(row=row_cursor, column=c_idx).fill = header_fill
-            row_cursor += 1
-        
-            # Rows
-            for _, r in acc_view.iterrows():
-                for c_idx, col in enumerate(cols, 1):
-                    cell = ws.cell(row=row_cursor, column=c_idx, value=r.get(col, ""))
-                    cell.fill = entry_fill
+                # Create a grouping key that also captures lines WITHOUT ICP
+                if "ICP CODE" in tmp.columns:
+                    tmp["_icp_group"] = tmp["ICP CODE"].astype(str)
+                    tmp["_icp_group"] = tmp["_icp_group"].replace("nan", "").fillna("")
+                    tmp.loc[tmp["_icp_group"].str.strip() == "", "_icp_group"] = "No ICP"
+                else:
+                    # If column doesn't exist at all, everything is "No ICP"
+                    tmp["_icp_group"] = "No ICP"
+
+                grouped = tmp.groupby("_icp_group", as_index=False)["Amount (LCY)"].sum()
+                grouped.rename(columns={"_icp_group": "ICP CODE"}, inplace=True)
+
+                # For display: Description = ICP code (or "No ICP"), GAAP/Doc blank
+                grouped["Description"] = grouped["ICP CODE"]
+                grouped["Document No."] = ""
+                grouped["GAAP Code"] = ""
+
+                acc_view = grouped[["Description", "Document No.", "ICP CODE", "GAAP Code", "Amount (LCY)"]].copy()
+                net_sum = round(acc_view["Amount (LCY)"].sum(), 2)
+
+                # Header row
+                header_cell = ws.cell(row=row_cursor, column=1, value=f"{acc_no} - {acc_name}")
+                account_anchor[acc_no] = (ws.title, row_cursor)
+                hyperlink_to_frontpage(header_cell)
+                header_cell.fill = green_fill if abs(net_sum - tb_bal) <= tolerance else red_fill
+
+                if abs(net_sum - tb_bal) > tolerance:
+                    sheet_mismatch = True
+                    mismatch_accounts.append({
+                        "No": acc_no,
+                        "Name": acc_name,
+                        "tb_balance": tb_bal,
+                        "entries_sum": net_sum,
+                        "difference": round(net_sum - tb_bal, 2),
+                    })
+
                 row_cursor += 1
-        
-            # Total row
-            ws.cell(row=row_cursor, column=4, value="Account Total").font = Font(bold=True)
-            vcell = ws.cell(row=row_cursor, column=5, value=net_sum)
-            vcell.font = Font(bold=True)
-            for c in range(1, 6):
-                ws.cell(row=row_cursor, column=c).fill = total_fill
-        
-            apply_borders(ws, block_start, row_cursor, 1, 5)
-            row_cursor += 3
-            continue
+                block_start = row_cursor
+
+                # Column headers
+                cols = ["Description", "Document No.", "ICP CODE", "GAAP Code", "Amount (LCY)"]
+                for c_idx, col in enumerate(cols, 1):
+                    ws.cell(row=row_cursor, column=c_idx, value=col).font = Font(bold=True)
+                    ws.cell(row=row_cursor, column=c_idx).fill = header_fill
+                row_cursor += 1
+
+                # Rows
+                for _, r in acc_view.iterrows():
+                    for c_idx, col in enumerate(cols, 1):
+                        cell = ws.cell(row=row_cursor, column=c_idx, value=r.get(col, ""))
+                        cell.fill = entry_fill
+                    row_cursor += 1
+
+                # Total row
+                ws.cell(row=row_cursor, column=4, value="Account Total").font = Font(bold=True)
+                vcell = ws.cell(row=row_cursor, column=5, value=net_sum)
+                vcell.font = Font(bold=True)
+                for c in range(1, 6):
+                    ws.cell(row=row_cursor, column=c).fill = total_fill
+
+                apply_borders(ws, block_start, row_cursor, 1, 5)
+                row_cursor += 3
+                continue
 
             # Special: accounts 311000 and 721000 → show ONLY one total line (no ICP grouping)
             if acc_no in ["311000", "721000"]:
                 net_sum = round(acc_df["Amount (LCY)"].sum(), 2)
-            
+
                 header_cell = ws.cell(row=row_cursor, column=1, value=f"{acc_no} - {acc_name}")
                 account_anchor[acc_no] = (ws.title, row_cursor)
                 hyperlink_to_frontpage(header_cell)
@@ -780,10 +794,10 @@ def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_
                         "entries_sum": net_sum,
                         "difference": round(net_sum - tb_bal, 2),
                     })
-            
+
                 row_cursor += 1
                 block_start = row_cursor
-            
+
                 # First row: labels (Note header + Account Total label)
                 ws.cell(row=row_cursor, column=1, value="Note").font = Font(bold=True)
                 ws.cell(row=row_cursor, column=6, value="Account Total").font = Font(bold=True)
@@ -801,8 +815,6 @@ def build_workbook(trial_balance_df, entries_df, map_dir, acct_to_code, code_to_
                 apply_borders(ws, block_start, row_cursor, 1, 6)
                 row_cursor += 3
                 continue
-
-            
 
             # Special: bank/cash accounts 390000–399999 -> totals only with note (See documentation)
             if acc_no.isdigit() and 390000 <= int(acc_no) <= 399999:
