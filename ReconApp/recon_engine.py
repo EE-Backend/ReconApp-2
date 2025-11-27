@@ -429,8 +429,8 @@ def add_pl_balance_sheet(wb, trial_balance_df, code_to_meta):
     r31 = code_row["31"]
     r39 = code_row["39"]
 
-    # Total equity = SUM(20–23)
-    set_formula("Total equity", f"=SUM({d_ref(r20)}:{d_ref(r23)})")
+    # Total equity = SUM(20–23) + Total profit
+    set_formula("Total equity", f"=SUM({d_ref(r20)}:{d_ref(r23)})+{d_ref(r_tp)}")
 
     # Total non-current liabilities = SUM(24,25,28,29,30) (contiguous in layout)
     set_formula("Total non-current liabilities", f"=SUM({d_ref(r24)}:{d_ref(r30)})")
